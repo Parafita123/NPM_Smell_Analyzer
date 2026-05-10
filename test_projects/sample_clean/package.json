@@ -1,0 +1,11 @@
+{
+  "name": "sample-clean",
+  "version": "1.0.0",
+  "dependencies": {
+    "react": "^19.1.0",
+    "axios": "^1.7.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

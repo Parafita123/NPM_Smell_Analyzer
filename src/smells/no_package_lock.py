@@ -1,19 +1,24 @@
 from pathlib import Path
 from src.models import Finding
+from src.smells.base import SmellDetector
 
 
-def detect_no_package_lock(project_path: str) -> list[Finding]:
-    package_lock_path = Path(project_path) / "package-lock.json"
+class NoPackageLockDetector(SmellDetector):
+    smell_name = "no-package-lock"
 
-    if package_lock_path.exists():
-        return []
+    def detect(self, **kwargs) -> list[Finding]:
+        project_path = kwargs["project_path"]
+        package_lock_path = Path(project_path) / "package-lock.json"
 
-    return [
-        Finding(
-            smell="no-package-lock",
-            dependency=None,
-            severity="medium",
-            evidence={"missing_file": "package-lock.json"},
-            message="The project does not contain a package-lock.json file.",
-        )
-    ]
+        if package_lock_path.exists():
+            return []
+
+        return [
+            Finding(
+                smell=self.smell_name,
+                dependency=None,
+                severity="medium",
+                evidence={"missing_file": "package-lock.json"},
+                message="The project does not contain a package-lock.json file.",
+            )
+        ]
