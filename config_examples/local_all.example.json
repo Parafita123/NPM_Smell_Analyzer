@@ -1,0 +1,4 @@
+{
+  "smells": ["all"],
+  "unmaintained_threshold_months": 24
+}

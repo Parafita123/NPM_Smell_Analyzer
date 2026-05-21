@@ -295,3 +295,70 @@ For this reason, the recommended workflow is:
 
 use react-smell-analyzer normally for local/fast smells;
 use Dirty-Waters-based smells only when repository-level supply-chain analysis is needed.
+
+
+
+## Configuration Files
+
+The analyzer can optionally read its execution settings from a JSON configuration file.
+
+Two usage modes are supported:
+
+- a configuration file placed in the root of the analyzed project;
+- an explicit configuration file passed through `--config`.
+
+The configuration file is optional. If no configuration file is found, the tool behaves normally and expects the required options through the command line.
+
+Supported default filenames in the analyzed project root:
+
+- `smellrc.json`
+- `.smellrc.json`
+
+### Example: local and Knip smells
+
+Example configuration file:
+
+```json
+{
+  "smells": ["all"],
+  "unmaintained_threshold_months": 24
+}
+
+This configuration runs the default local and Knip-based smells.
+
+
+## Dirty-Waters config example
+
+Example configuration file:
+
+```json
+{
+  "smells": ["dirty-waters-all"],
+  "repo": "owner/repository",
+  "dirty_waters_backend": "wsl",
+  "wsl_distro": "Ubuntu",
+  "dirty_waters_root": "/home/your-user/dirty-waters"
+}
+
+This configuration runs all Dirty-Waters-based smells without requiring the same options to be repeated in every command.
+
+
+### Command-line override
+
+Command-line arguments take precedence over configuration values.
+
+For example, if the configuration file contains:
+
+```json
+{
+  "smells": ["all"]
+}
+
+the following command will override that setting and run only one smell:
+
+```bash
+react-smell-analyzer --project "C:\path\to\project" --config "C:\path\to\config.json" --smell duplicate-versions
+
+Note:
+If `--config` points to a non-existing file, the tool will fail explicitly with an error indicating that the configuration file could not be found.
+

@@ -4,6 +4,7 @@ from src.models import AnalysisResult
 from src.report_writer import write_report
 from src.smells.registry import SMELL_REGISTRY
 
+
 DIRTY_WATERS_SMELLS = {
     "deprecated-dependency",
     "no-source-code-link",
@@ -14,11 +15,9 @@ DIRTY_WATERS_SMELLS = {
     "aliased-packages",
 }
 
-
 SUPPORTED_SMELLS = set(SMELL_REGISTRY.keys())
 DEFAULT_ALL_SMELLS = sorted(SUPPORTED_SMELLS - DIRTY_WATERS_SMELLS)
 DIRTY_WATERS_ALL_SMELLS = sorted(DIRTY_WATERS_SMELLS)
-
 
 PACKAGE_JSON_SMELLS = {
     "pinned-dependency",
@@ -32,10 +31,6 @@ PACKAGE_LOCK_SMELLS = {
     "duplicate-versions",
 }
 
-NODE_MODULES_SMELLS = {
-    "installation-scripts",
-}
-
 
 def run_analysis(
     project_path: str,
@@ -43,12 +38,12 @@ def run_analysis(
     repo_name: str | None = None,
     dirty_waters_backend: str = "disabled",
     wsl_distro: str = "Ubuntu",
-    dirty_waters_root: str = "~/dirty-waters",
+    dirty_waters_root: str = "/home/parafita/dirty-waters",
+    unmaintained_threshold_months: int = 24,
 ) -> str:
     result = AnalysisResult(
         project_path=project_path,
         selected_smells=selected_smells,
-        
     )
 
     package_json = None
@@ -74,6 +69,7 @@ def run_analysis(
         "dirty_waters_backend": dirty_waters_backend,
         "wsl_distro": wsl_distro,
         "dirty_waters_root": dirty_waters_root,
+        "unmaintained_threshold_months": unmaintained_threshold_months,
     }
 
     for smell in selected_smells:
