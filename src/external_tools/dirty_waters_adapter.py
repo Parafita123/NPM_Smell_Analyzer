@@ -1,6 +1,7 @@
 import os
 import re
 import shlex
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +14,12 @@ class DirtyWatersResult:
     report_text: str | None
     user_report_location: str | None = None
     note: str | None = None
+
+
+def _resolve_backend(backend: str) -> str:
+    if backend == "auto":
+        return "wsl" if os.name == "nt" else "native"
+    return backend
 
 
 def _windows_to_wsl_path(path: str) -> str:
@@ -52,40 +59,46 @@ def _resolve_absolute_report_path(
     return f"{dirty_waters_root}/tool/{relative_report_path}"
 
 
-def run_dirty_waters_check(
+def _read_text_if_exists(path: Path) -> str:
+    if not path.exists():
+        return ""
+    return path.read_text(encoding="utf-8", errors="replace")
+
+
+def _find_native_python(dirty_waters_root: str) -> str | None:
+    root = Path(dirty_waters_root)
+
+    candidates = [
+        root / "venv" / "bin" / "python",
+        root / "venv" / "Scripts" / "python.exe",
+    ]
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+
+    return shutil.which("python3") or shutil.which("python")
+
+
+def _run_dirty_waters_wsl(
     repo_name: str,
     package_manager: str,
     check_flags: list[str],
-    backend: str = "disabled",
-    wsl_distro: str = "Ubuntu",
-    dirty_waters_root: str = "/home/parafita/dirty-waters",
-) -> tuple[DirtyWatersResult | None, list[str]]:
-    errors: list[str] = []
-
-    if backend != "wsl":
-        errors.append("Dirty-Waters backend is disabled.")
-        return None, errors
-
-    github_token = os.getenv("GITHUB_API_TOKEN", "").strip()
-    if not github_token:
-        errors.append("GITHUB_API_TOKEN is not set in the Windows environment.")
-        return None, errors
-
+    github_token: str,
+    wsl_distro: str,
+    dirty_waters_root: str,
+    windows_stdout: Path,
+    windows_stderr: Path,
+    windows_report: Path,
+) -> tuple[int | None, str | None]:
     repo_name_q = shlex.quote(repo_name)
     package_manager_q = shlex.quote(package_manager)
     dirty_waters_root_q = shlex.quote(dirty_waters_root)
     flags_q = " ".join(shlex.quote(flag) for flag in check_flags)
 
-    windows_debug_dir = Path.cwd() / "dirty_waters_debug"
-    windows_debug_dir.mkdir(exist_ok=True)
-
-    windows_stdout = windows_debug_dir / "dirty_waters_stdout.txt"
-    windows_stderr = windows_debug_dir / "dirty_waters_stderr.txt"
-    windows_report = windows_debug_dir / "dirty_waters_report.md"
-
-    wsl_stdout = _windows_to_wsl_path(windows_stdout)
-    wsl_stderr = _windows_to_wsl_path(windows_stderr)
-    wsl_report = _windows_to_wsl_path(windows_report)
+    wsl_stdout = _windows_to_wsl_path(str(windows_stdout))
+    wsl_stderr = _windows_to_wsl_path(str(windows_stderr))
+    wsl_report = _windows_to_wsl_path(str(windows_report))
 
     shell_script = f"""
 set -o pipefail
@@ -116,19 +129,146 @@ exit $cmd_status
             check=False,
         )
     except Exception as exc:
-        errors.append(f"Failed to execute Dirty-Waters through WSL: {exc}")
+        return None, f"Failed to execute Dirty-Waters through WSL: {exc}"
+
+    return result.returncode, None
+
+
+def _run_dirty_waters_native(
+    repo_name: str,
+    package_manager: str,
+    check_flags: list[str],
+    github_token: str,
+    dirty_waters_root: str,
+    windows_stdout: Path,
+    windows_stderr: Path,
+) -> tuple[int | None, str | None]:
+    tool_dir = Path(dirty_waters_root) / "tool"
+    if not tool_dir.exists():
+        return None, f"Dirty-Waters tool directory not found: '{tool_dir}'."
+
+    python_cmd = _find_native_python(dirty_waters_root)
+    if not python_cmd:
+        return None, "Could not find a Python interpreter for native Dirty-Waters execution."
+
+    full_cmd = [
+        python_cmd,
+        "main.py",
+        "-p",
+        repo_name,
+        "-pm",
+        package_manager,
+        "--gradual-report",
+        "false",
+        "--debug",
+        *check_flags,
+    ]
+
+    env = os.environ.copy()
+    env["GITHUB_API_TOKEN"] = github_token
+
+    try:
+        result = subprocess.run(
+            full_cmd,
+            cwd=tool_dir,
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+        )
+    except Exception as exc:
+        return None, f"Failed to execute Dirty-Waters in native mode: {exc}"
+
+    windows_stdout.write_text(result.stdout or "", encoding="utf-8")
+    windows_stderr.write_text(result.stderr or "", encoding="utf-8")
+
+    return result.returncode, None
+
+
+def run_dirty_waters_check(
+    repo_name: str,
+    package_manager: str,
+    check_flags: list[str],
+    backend: str = "disabled",
+    wsl_distro: str = "Ubuntu",
+    dirty_waters_root: str = "/home/parafita/dirty-waters",
+) -> tuple[DirtyWatersResult | None, list[str]]:
+    errors: list[str] = []
+
+    backend = _resolve_backend(backend)
+
+    if backend == "disabled":
+        errors.append(
+            "Dirty-Waters backend is disabled. "
+            "Use 'wsl', 'native', or 'auto' to enable Dirty-Waters-based analysis."
+        )
         return None, errors
 
-    stdout_text = windows_stdout.read_text(encoding="utf-8", errors="replace") if windows_stdout.exists() else ""
-    stderr_text = windows_stderr.read_text(encoding="utf-8", errors="replace") if windows_stderr.exists() else ""
-    copied_report_text = windows_report.read_text(encoding="utf-8", errors="replace") if windows_report.exists() else None
-
-    if result.returncode != 0:
+    if backend not in {"wsl", "native"}:
         errors.append(
-            f"Dirty-Waters failed in WSL with exit code {result.returncode}. "
-            f"stdout: {stdout_text[-2000:] if stdout_text else 'empty'} | "
-            f"stderr: {stderr_text[-2000:] if stderr_text else 'empty'}"
+            f"Unsupported Dirty-Waters backend: '{backend}'. "
+            "Supported values are: disabled, wsl, native, auto."
         )
+        return None, errors
+
+    github_token = os.getenv("GITHUB_API_TOKEN", "").strip()
+    if not github_token:
+        errors.append(
+            "GITHUB_API_TOKEN is not set. Dirty-Waters requires a GitHub token in the environment."
+        )
+        return None, errors
+
+    windows_debug_dir = Path.cwd() / "dirty_waters_debug"
+    windows_debug_dir.mkdir(exist_ok=True)
+
+    windows_stdout = windows_debug_dir / "dirty_waters_stdout.txt"
+    windows_stderr = windows_debug_dir / "dirty_waters_stderr.txt"
+    windows_report = windows_debug_dir / "dirty_waters_report.md"
+
+    if backend == "wsl":
+        returncode, execution_error = _run_dirty_waters_wsl(
+            repo_name=repo_name,
+            package_manager=package_manager,
+            check_flags=check_flags,
+            github_token=github_token,
+            wsl_distro=wsl_distro,
+            dirty_waters_root=dirty_waters_root,
+            windows_stdout=windows_stdout,
+            windows_stderr=windows_stderr,
+            windows_report=windows_report,
+        )
+    else:
+        returncode, execution_error = _run_dirty_waters_native(
+            repo_name=repo_name,
+            package_manager=package_manager,
+            check_flags=check_flags,
+            github_token=github_token,
+            dirty_waters_root=dirty_waters_root,
+            windows_stdout=windows_stdout,
+            windows_stderr=windows_stderr,
+        )
+
+    if execution_error:
+        errors.append(execution_error)
+        return None, errors
+
+    stdout_text = _read_text_if_exists(windows_stdout)
+    stderr_text = _read_text_if_exists(windows_stderr)
+    copied_report_text = _read_text_if_exists(windows_report) or None
+
+    if returncode != 0:
+        if backend == "wsl":
+            errors.append(
+                f"Dirty-Waters failed in WSL with exit code {returncode}. "
+                f"stdout: {stdout_text[-2000:] if stdout_text else 'empty'} | "
+                f"stderr: {stderr_text[-2000:] if stderr_text else 'empty'}"
+            )
+        else:
+            errors.append(
+                f"Dirty-Waters failed in native mode with exit code {returncode}. "
+                f"stdout: {stdout_text[-2000:] if stdout_text else 'empty'} | "
+                f"stderr: {stderr_text[-2000:] if stderr_text else 'empty'}"
+            )
         return None, errors
 
     relative_report_path = _extract_report_path(stdout_text)
@@ -141,13 +281,32 @@ exit $cmd_status
             relative_report_path,
             dirty_waters_root,
         )
-        user_report_location = _linux_path_to_wsl_unc(
-            absolute_linux_report_path,
-            wsl_distro,
-        )
+
+        if backend == "wsl":
+            user_report_location = _linux_path_to_wsl_unc(
+                absolute_linux_report_path,
+                wsl_distro,
+            )
+        else:
+            user_report_location = absolute_linux_report_path
+
+    if backend == "native" and absolute_linux_report_path and not copied_report_text:
+        report_file = Path(absolute_linux_report_path)
+        if report_file.exists():
+            copied_report_text = report_file.read_text(encoding="utf-8", errors="replace")
 
     if copied_report_text:
-        note = "Dirty-Waters analysis completed successfully and the report was copied back to the local debug folder."
+        if backend == "wsl":
+            note = (
+                "Dirty-Waters analysis completed successfully and the report was copied back "
+                "to the local debug folder."
+            )
+        else:
+            note = (
+                "Dirty-Waters analysis completed successfully and the report was read directly "
+                "from the native filesystem."
+            )
+
         return DirtyWatersResult(
             stdout=stdout_text,
             report_path=absolute_linux_report_path,
@@ -156,15 +315,19 @@ exit $cmd_status
             note=note,
         ), errors
 
-    # IMPORTANT:
-    # If execution succeeded but the report was not copied back,
-    # we still treat the analysis as successful as long as we know where the report is.
     if absolute_linux_report_path:
-        note = (
-            "Dirty-Waters analysis completed successfully. "
-            "The report was generated inside WSL but was not copied back to the local debug folder. "
-            f"Open it here: {user_report_location}"
-        )
+        if backend == "wsl":
+            note = (
+                "Dirty-Waters analysis completed successfully. "
+                "The report was generated inside WSL but was not copied back to the local debug folder. "
+                f"Open it here: {user_report_location}"
+            )
+        else:
+            note = (
+                "Dirty-Waters analysis completed successfully. "
+                f"The report is available here: {user_report_location}"
+            )
+
         return DirtyWatersResult(
             stdout=stdout_text,
             report_path=absolute_linux_report_path,

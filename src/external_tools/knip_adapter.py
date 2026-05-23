@@ -42,9 +42,22 @@ def run_knip_dependency_analysis(project_path: str) -> tuple[list[Finding], list
     findings: list[Finding] = []
     errors: list[str] = []
 
+    project_dir = Path(project_path)
+
+    if not project_dir.exists():
+        errors.append(f"Project path does not exist: '{project_path}'.")
+        return findings, errors
+
+    if not project_dir.is_dir():
+        errors.append(f"Project path is not a directory: '{project_path}'.")
+        return findings, errors
+
     cmd = _find_knip_command(project_path)
     if cmd is None:
-        errors.append("Knip is not available in the target project or on PATH.")
+        errors.append(
+            "Knip is not available for this project. "
+            "Install it locally in the target project, or make sure 'knip' or 'npx' is available on PATH."
+        )
         return findings, errors
 
     full_cmd = cmd + ["--dependencies", "--reporter", "json"]
@@ -63,8 +76,10 @@ def run_knip_dependency_analysis(project_path: str) -> tuple[list[Finding], list
 
     if result.returncode not in (0, 1):
         stderr = result.stderr.strip()
+        stdout = result.stdout.strip()
+        details = stderr if stderr else stdout if stdout else "no diagnostic output"
         errors.append(
-            f"Knip returned exit code {result.returncode}: {stderr if stderr else 'no stderr output'}"
+            f"Knip returned unexpected exit code {result.returncode}: {details}"
         )
         return findings, errors
 
@@ -80,10 +95,17 @@ def run_knip_dependency_analysis(project_path: str) -> tuple[list[Finding], list
     try:
         payload = json.loads(stdout)
     except json.JSONDecodeError as exc:
-        errors.append(f"Failed to parse Knip JSON output: {exc}")
+        errors.append(
+            f"Failed to parse Knip JSON output (line {exc.lineno}, column {exc.colno}): {exc.msg}"
+        )
         return findings, errors
 
-    for issue in payload.get("issues", []):
+    issues = payload.get("issues", [])
+    if not isinstance(issues, list):
+        errors.append("Knip JSON output is invalid: 'issues' must be a list.")
+        return findings, errors
+
+    for issue in issues:
         file_path = issue.get("file", "unknown")
 
         for dep in issue.get("dependencies", []):
