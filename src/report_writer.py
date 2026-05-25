@@ -26,7 +26,7 @@ def write_report(result: AnalysisResult) -> Path:
         json.dump(result.errors, f, indent=2)
 
     with (output_dir / "report.txt").open("w", encoding="utf-8") as f:
-        f.write("React Smell Analyzer Report\n")
+        f.write("NPM Smell Analyzer Report\n")
         f.write("=" * 30 + "\n\n")
         f.write(f"Project: {result.project_path}\n")
         f.write(f"Selected smells: {', '.join(result.selected_smells)}\n")
