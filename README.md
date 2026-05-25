@@ -1,6 +1,6 @@
-# React Smell Analyzer
+# NPM Smell Analyzer
 
-React Smell Analyzer is a command-line tool for detecting selected software supply chain smells in React/npm projects.
+NPM Smell Analyzer is a command-line tool for detecting selected software supply chain smells in npm projects.
 
 The current prototype combines:
 
@@ -76,26 +76,26 @@ The tool currently supports three main execution modes:
 Runs all default local and Knip-based smells:
 
 ```bash
-react-smell-analyzer --project "C:\path\to\react-project" --all
+npm-smell-analyzer --project "C:\path\to\NPM-project" --all
 
 ### 2. Dirty-Waters full analysis
 
 Runs all Dirty-Waters based smells:
 
 ```bash
-react-smell-analyzer --project "C:\path\to\react-project" --repo owner/repo --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/<your-user>/dirty-waters --dirty-waters-all
+npm-smell-analyzer --project "C:\path\to\npm-project" --repo owner/repo --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/<your-user>/dirty-waters --dirty-waters-all
 
 ### 3. Specific smell analysis
 
 Runs one or more explicitly selected smells:
 
 ```bash
-react-smell-analyzer --project "C:\path\to\react-project" --smell duplicate-versions
+npm-smell-analyzer --project "C:\path\to\npm-project" --smell duplicate-versions
 
 Example with a Dirty-Waters smell:
 
 ```bash
-react-smell-analyzer --project "C:\path\to\react-project" --repo owner/repo --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/<your-user>/dirty-waters --smell deprecated-dependency
+npm-smell-analyzer --project "C:\path\to\npm-project" --repo owner/repo --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/<your-user>/dirty-waters --smell deprecated-dependency
 
 
 ### Important Notes About Selected Smells
@@ -130,7 +130,7 @@ npm install -D knip typescript @types/node
 
 # Dirty-Waters Integration (WSL/Ubuntu)
 
-The `react-smell-analyzer` supports a subset of smells through the external tool [Dirty-Waters](https://github.com/chains-project/dirty-waters/).
+The `npm-smell-analyzer` supports a subset of smells through the external tool [Dirty-Waters](https://github.com/chains-project/dirty-waters/).
 
 ## Important Notes
 
@@ -197,7 +197,7 @@ This token is required by Dirty-Waters to access repository metadata.
 
 ## 4. Configure the GitHub token
 
-### In Windows (required when running react-smell-analyzer from CMD/PowerShell)
+### In Windows (required when running npm-smell-analyzer from CMD/PowerShell)
 
 In the same terminal where you run the analyzer:
 
@@ -254,19 +254,19 @@ Another example for source-code repository checks:
 ```ubuntu
 python main.py -p Parafita123/DSSMV_ProjectReact_1231283_1231051 -pm npm --gradual-report false --check-source-code --debug
 
-## 7. Running Dirty-Waters-based smells from react-smell-analyzer
+## 7. Running Dirty-Waters-based smells from npm-smell-analyzer
 
 Dirty-Waters-based smells must be executed explicitly.
 
 Example:
 
 ```bash
-react-smell-analyzer --project "C:\Users\fpara\Desktop\DSSMV_ProjectReact_1231283_1231051-master" --repo Parafita123/DSSMV_ProjectReact_1231283_1231051 --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/parafita/dirty-waters --smell deprecated-dependency
+npm-smell-analyzer --project "C:\Users\fpara\Desktop\DSSMV_ProjectReact_1231283_1231051-master" --repo Parafita123/DSSMV_ProjectReact_1231283_1231051 --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/parafita/dirty-waters --smell deprecated-dependency
 
 Another example:
 
 ```bash
-react-smell-analyzer --project "C:\Users\fpara\Desktop\DSSMV_ProjectReact_1231283_1231051-master" --repo Parafita123/DSSMV_ProjectReact_1231283_1231051 --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/parafita/dirty-waters --smell no-source-code-link
+npm-smell-analyzer --project "C:\Users\fpara\Desktop\DSSMV_ProjectReact_1231283_1231051-master" --repo Parafita123/DSSMV_ProjectReact_1231283_1231051 --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/parafita/dirty-waters --smell no-source-code-link
 
 ## 8. Report location
 
@@ -293,7 +293,7 @@ Dirty-Waters integration has the following limitations:
 
 For this reason, the recommended workflow is:
 
-use react-smell-analyzer normally for local/fast smells;
+use npm-smell-analyzer normally for local/fast smells;
 use Dirty-Waters-based smells only when repository-level supply-chain analysis is needed.
 
 
@@ -357,7 +357,7 @@ For example, if the configuration file contains:
 the following command will override that setting and run only one smell:
 
 ```bash
-react-smell-analyzer --project "C:\path\to\project" --config "C:\path\to\config.json" --smell duplicate-versions
+npm-smell-analyzer --project "C:\path\to\project" --config "C:\path\to\config.json" --smell duplicate-versions
 
 Note:
 If `--config` points to a non-existing file, the tool will fail explicitly with an error indicating that the configuration file could not be found.
