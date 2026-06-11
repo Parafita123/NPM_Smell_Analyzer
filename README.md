@@ -75,26 +75,26 @@ The tool currently supports three main execution modes:
 
 Runs all default local and Knip-based smells:
 
-```bash
+bash
 npm-smell-analyzer --project "C:\path\to\NPM-project" --all
 
 ### 2. Dirty-Waters full analysis
 
 Runs all Dirty-Waters based smells:
 
-```bash
+bash
 npm-smell-analyzer --project "C:\path\to\npm-project" --repo owner/repo --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/<your-user>/dirty-waters --dirty-waters-all
 
 ### 3. Specific smell analysis
 
 Runs one or more explicitly selected smells:
 
-```bash
+bash
 npm-smell-analyzer --project "C:\path\to\npm-project" --smell duplicate-versions
 
 Example with a Dirty-Waters smell:
 
-```bash
+bash
 npm-smell-analyzer --project "C:\path\to\npm-project" --repo owner/repo --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/<your-user>/dirty-waters --smell deprecated-dependency
 
 
@@ -124,7 +124,7 @@ In practice, this usually means that the analyzed project should have Knip avail
 
 For example, inside the target project:
 
-```bash
+bash
 npm install -D knip typescript @types/node
 
 
@@ -164,7 +164,7 @@ To use Dirty-Waters-based smells, you need:
 
 Open **PowerShell as Administrator** and run:
 
-```powershell
+powershell
 wsl --install -d Ubuntu
 
 Restart the computer if requested.
@@ -178,7 +178,7 @@ After restarting, open Ubuntu and complete the initial setup by creating:
 
 Inside Ubuntu, install the required tools:
 
-```ubuntu
+ubuntu
 sudo apt update
 sudo apt install -y python3 python3-venv python3-pip git nodejs npm curl
 
@@ -201,22 +201,22 @@ This token is required by Dirty-Waters to access repository metadata.
 
 In the same terminal where you run the analyzer:
 
-```bash
+bash
 set GITHUB_API_TOKEN=YOUR_TOKEN_HERE
 
 To make it persistent for future terminals:
 
-```bash
+bash
 setx GITHUB_API_TOKEN "YOUR_TOKEN_HERE"
 
 ### In Ubuntu/WSL (recommended for standalone Dirty-Waters usage)
 
-```ubuntu
+ubuntu
 export GITHUB_API_TOKEN='YOUR_TOKEN_HERE'
 
 To make it persistent:
 
-```ubuntu
+ubuntu
 echo 'export GITHUB_API_TOKEN="YOUR_TOKEN_HERE"' >> ~/.bashrc
 source ~/.bashrc
 
@@ -224,7 +224,7 @@ source ~/.bashrc
 
 Inside Ubuntu:
 
-```ubuntu
+ubuntu
 cd ~
 git clone https://github.com/chains-project/dirty-waters.git
 cd dirty-waters
@@ -239,19 +239,19 @@ At this point, Dirty-Waters should be available inside WSL.
 
 To validate that Dirty-Waters works correctly in Ubuntu:
 
-```ubuntu
+ubuntu
 cd ~/dirty-waters/tool
 python main.py -p OWNER/REPOSITORY -pm npm --gradual-report false --check-deprecated --debug
 
 Example:
 
-```ubuntu
+ubuntu
 cd ~/dirty-waters/tool
 python main.py -p Parafita123/DSSMV_ProjectReact_1231283_1231051 -pm npm --gradual-report false --check-deprecated --debug
 
 Another example for source-code repository checks:
 
-```ubuntu
+ubuntu
 python main.py -p Parafita123/DSSMV_ProjectReact_1231283_1231051 -pm npm --gradual-report false --check-source-code --debug
 
 ## 7. Running Dirty-Waters-based smells from npm-smell-analyzer
@@ -260,12 +260,12 @@ Dirty-Waters-based smells must be executed explicitly.
 
 Example:
 
-```bash
+bash
 npm-smell-analyzer --project "C:\Users\fpara\Desktop\DSSMV_ProjectReact_1231283_1231051-master" --repo Parafita123/DSSMV_ProjectReact_1231283_1231051 --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/parafita/dirty-waters --smell deprecated-dependency
 
 Another example:
 
-```bash
+bash
 npm-smell-analyzer --project "C:\Users\fpara\Desktop\DSSMV_ProjectReact_1231283_1231051-master" --repo Parafita123/DSSMV_ProjectReact_1231283_1231051 --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/parafita/dirty-waters --smell no-source-code-link
 
 ## 8. Report location
@@ -318,7 +318,7 @@ Supported default filenames in the analyzed project root:
 
 Example configuration file:
 
-```json
+json
 {
   "smells": ["all"],
   "unmaintained_threshold_months": 24
@@ -331,7 +331,7 @@ This configuration runs the default local and Knip-based smells.
 
 Example configuration file:
 
-```json
+json
 {
   "smells": ["dirty-waters-all"],
   "repo": "owner/repository",
@@ -349,14 +349,14 @@ Command-line arguments take precedence over configuration values.
 
 For example, if the configuration file contains:
 
-```json
+json
 {
   "smells": ["all"]
 }
 
 the following command will override that setting and run only one smell:
 
-```bash
+bash
 npm-smell-analyzer --project "C:\path\to\project" --config "C:\path\to\config.json" --smell duplicate-versions
 
 Note:

@@ -90,13 +90,13 @@ def _resolve_smells(args, config):
 
 def run() -> None:
     parser = argparse.ArgumentParser(
-        description="Analyze a React/npm project for selected supply chain smells."
+        description="Analyze a npm project for selected supply chain smells."
     )
 
     parser.add_argument(
         "--project",
         required=True,
-        help="Path to the React/npm project.",
+        help="Path to the npm project.",
     )
     parser.add_argument(
         "--config",
