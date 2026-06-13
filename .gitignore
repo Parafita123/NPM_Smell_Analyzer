@@ -1,9 +1,17 @@
 .venv/
+.venv-*/
+venv/
+env/
 __pycache__/
 outputs/
 *.pyc
+*.py[cod]
+.pytest_cache/
+.coverage
 
 dirty_waters_debug/dirty_waters_stdout.txt
 dirty_waters_debug/dirty_waters_stderr.txt
 *.egg-info/
+build/
+dist/
 react_smell_analyzer.egg-info/PKG-INFO

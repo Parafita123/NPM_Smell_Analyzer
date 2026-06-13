@@ -1,26 +1,23 @@
 import json
 from datetime import datetime
 from pathlib import Path
+
 from src.models import AnalysisResult
 
 
 def write_report(result: AnalysisResult) -> Path:
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Include microseconds to avoid collisions between runs started
+    # during the same second.
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     output_dir = Path("outputs") / f"run_{timestamp}"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    summary = {
-        "project_path": result.project_path,
-        "selected_smells": result.selected_smells,
-        "total_findings": len(result.findings),
-        "total_errors": len(result.errors),
-    }
-
-    with (output_dir / "summary.json").open("w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
+    output_dir.mkdir(parents=True, exist_ok=False)
 
     with (output_dir / "findings.json").open("w", encoding="utf-8") as f:
-        json.dump([finding.to_dict() for finding in result.findings], f, indent=2)
+        json.dump(
+            [finding.to_dict() for finding in result.findings],
+            f,
+            indent=2,
+        )
 
     with (output_dir / "errors.json").open("w", encoding="utf-8") as f:
         json.dump(result.errors, f, indent=2)

@@ -9,8 +9,9 @@ description = "CLI tool for detecting selected software supply chain smells in R
 readme = "README.md"
 requires-python = ">=3.10"
 
-[tool.setuptools]
-packages = ["src"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
 
 [project.scripts]
 npm-smell-analyzer = "src.cli:run"
