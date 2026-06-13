@@ -1,7 +1,0 @@
-___init__
-analyzers
-cli
-models
-orchestrator
-report_writer
-smells
