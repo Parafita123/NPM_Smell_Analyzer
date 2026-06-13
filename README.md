@@ -1,89 +1,144 @@
 # NPM Smell Analyzer
 
-NPM Smell Analyzer is a command-line tool for detecting selected software supply chain smells in npm projects.
+NPM Smell Analyzer is a command-line tool for detecting selected software supply chain smells and dependency-related risk indicators in npm projects.
 
 The current prototype combines:
 
-- native local analysis of project files;
-- dependency usage analysis through external tooling;
-- selected repository-level checks through Dirty-Waters running via WSL.
+* native local analysis of npm project files;
+* dependency usage analysis through Knip;
+* selected repository-level checks through Dirty-Waters;
+* structured output artifacts for findings and execution errors.
 
-The tool generates structured reports with findings and errors for each analysis run.
+The goal of the tool is not to prove that a dependency is malicious or exploitable. Instead, it highlights dependency-related patterns that may deserve manual inspection by developers.
+
+---
 
 ## Current Scope
 
 The current prototype targets projects in the npm ecosystem and analyzes information derived from:
 
-- `package.json`
-- `package-lock.json`
-- locally installed dependencies in `node_modules` (for selected smells)
-- source code usage analysis through external tooling
-- repository-level metadata through Dirty-Waters
+* `package.json`;
+* `package-lock.json`;
+* locally installed dependencies in `node_modules` for selected smells;
+* source code usage analysis through Knip;
+* repository-level metadata through Dirty-Waters.
 
 The prototype is focused on lightweight, developer-oriented analysis and reporting.
 
 It does **not**:
 
-- execute dependency code during analysis;
-- confirm malicious intent;
-- prove exploitability;
-- fully replace specialized ecosystem tools.
+* execute dependency code during native analysis;
+* confirm malicious intent;
+* prove exploitability;
+* fully replace specialized vulnerability scanners or ecosystem tools.
 
-Instead, it highlights dependency-related smells and risk indicators that may deserve manual inspection.
+Instead, it reports software supply chain smells and risk indicators that may support earlier inspection and more informed maintenance decisions.
 
-## Currently Supported Smells
+---
+
+## Supported Smells
+
+The current prototype supports 17 smells, organized into three detection groups.
 
 ### Native local smells
 
-These smells are detected directly by the tool through local parsing and rule-based analysis:
+These smells are detected directly by the tool through local parsing, rule-based analysis, or lightweight metadata inspection:
 
-- `no-package-lock`
-- `pinned-dependency`
-- `url-dependency`
-- `restrictive-constraint`
-- `permissive-constraint`
-- `duplicate-versions`
-- `installation-scripts`
-- `unmaintained-package`
+* `no-package-lock`
+* `pinned-dependency`
+* `url-dependency`
+* `restrictive-constraint`
+* `permissive-constraint`
+* `duplicate-versions`
+* `installation-scripts`
+* `unmaintained-package`
 
 ### Knip-based smells
 
 These smells are detected through integration with [Knip](https://knip.dev/):
 
-- `unused-dependency`
-- `missing-dependency`
+* `unused-dependency`
+* `missing-dependency`
 
 ### Dirty-Waters-based smells
 
-These smells are detected through integration with [Dirty-Waters](https://github.com/chains-project/dirty-waters/) executed through **WSL/Ubuntu**:
+These smells are detected through integration with [Dirty-Waters](https://github.com/chains-project/dirty-waters/):
 
-- `deprecated-dependency`
-- `no-source-code-link`
-- `no-source-code-sha`
-- `depends-on-fork`
-- `no-build-attestation`
-- `no-invalid-code-signature`
-- `aliased-packages`
+* `deprecated-dependency`
+* `no-source-code-link`
+* `no-source-code-sha`
+* `depends-on-fork`
+* `no-build-attestation`
+* `no-invalid-code-signature`
+* `aliased-packages`
 
-> **Note:** Dirty-Waters-based smells are external, slower, GitHub-dependent, and WSL/Ubuntu-oriented in the tested environment. They must be executed explicitly and are not part of the default `--all` run.
+> **Note:** Dirty-Waters-based smells are external, slower, GitHub-dependent, and WSL/Ubuntu-oriented in the tested Windows environment. They must be executed explicitly and are not part of the default `--all` workflow.
+
+---
+
+## Installation
+
+Clone the repository and install the tool in editable mode:
+
+```bash
+git clone https://github.com/Parafita123/NPM_Smell_Analyzer.git
+cd NPM_Smell_Analyzer
+python -m pip install -e .
+```
+
+After installation, the CLI should be available as:
+
+```bash
+npm-smell-analyzer --help
+```
+
+---
+
+## Core Requirements
+
+The default local analysis requires:
+
+* Python 3.10 or higher;
+* an npm-based project to analyze.
+
+For Knip-based smells, the target project must be able to run Knip. In practice, this usually means that Knip should be available locally in the analyzed project or executable through `npx`.
+
+Example installation inside the target npm project:
+
+```bash
+npm install -D knip typescript @types/node
+```
+
+Dirty-Waters-based smells require additional setup, described in the [Dirty-Waters Integration](#dirty-waters-integration-wslubuntu) section.
+
+---
 
 ## Analysis Modes
 
-The tool currently supports three main execution modes:
+The tool supports three main execution modes.
 
-### 1. Default full analysis
+### 1. Default local and Knip-based analysis
 
-Runs all default local and Knip-based smells:
+Runs the default local and Knip-based smells:
 
 ```bash
-npm-smell-analyzer --project "C:\path\to\NPM-project" --all
+npm-smell-analyzer --project "C:\path\to\npm-project" --all
+```
+
+The `--all` mode includes:
+
+* native local smells;
+* Knip-based dependency usage smells.
+
+It does **not** include Dirty-Waters-based smells.
 
 ### 2. Dirty-Waters full analysis
 
-Runs all Dirty-Waters based smells:
+Runs all Dirty-Waters-based smells:
 
 ```bash
 npm-smell-analyzer --project "C:\path\to\npm-project" --repo owner/repo --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/<your-user>/dirty-waters --dirty-waters-all
+```
 
 ### 3. Specific smell analysis
 
@@ -91,140 +146,162 @@ Runs one or more explicitly selected smells:
 
 ```bash
 npm-smell-analyzer --project "C:\path\to\npm-project" --smell duplicate-versions
+```
 
-Example with a Dirty-Waters smell:
+Multiple smells can be selected by repeating `--smell`:
+
+```bash
+npm-smell-analyzer --project "C:\path\to\npm-project" --smell pinned-dependency --smell url-dependency
+```
+
+Example with a Dirty-Waters-based smell:
 
 ```bash
 npm-smell-analyzer --project "C:\path\to\npm-project" --repo owner/repo --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/<your-user>/dirty-waters --smell deprecated-dependency
+```
 
+---
 
-### Important Notes About Selected Smells
+## Output Artifacts
 
-installation-scripts
+Each analysis run generates an output directory under:
 
-This smell requires node_modules to be installed locally, because it inspects dependency package.json files inside the installed dependency tree.
+```text
+outputs/run_<timestamp>/
+```
 
-unmaintained-package
+The generated artifacts are:
 
-This smell is heuristic-based. In the current prototype, it uses npm registry metadata and flags packages whose last registry modification is older than a defined threshold.
+* `findings.json` — structured list of detected findings;
+* `errors.json` — structured list of execution errors or warnings;
+* `report.txt` — human-readable report for direct inspection.
 
-A flagged package is not necessarily abandoned, but it may deserve manual inspection.
+The text report summarizes:
 
-## Requirements
+* analyzed project path;
+* selected smells;
+* total number of findings;
+* total number of errors;
+* detected findings;
+* execution errors, when applicable.
 
-### Core requirements
+---
 
-- Python 3.10 or higher
-- npm-based project to analyze
+## Important Notes About Selected Smells
 
-### Additional requirements for Knip-based smells
+### `installation-scripts`
 
-For `unused-dependency` and `missing-dependency`, the target project must be able to run Knip.  
-In practice, this usually means that the analyzed project should have Knip available locally or be able to execute it through `npx`.
+This smell requires `node_modules` to be installed locally, because it inspects dependency-level `package.json` files inside the installed dependency tree.
 
-For example, inside the target project:
+It detects lifecycle scripts such as:
 
-```bash
-npm install -D knip typescript @types/node
+* `preinstall`
+* `install`
+* `postinstall`
 
+### `unmaintained-package`
 
-# Dirty-Waters Integration (WSL/Ubuntu)
+This smell is heuristic-based. In the current prototype, it uses npm registry metadata and flags packages whose last registry modification is older than a configurable threshold.
 
-The `npm-smell-analyzer` supports a subset of smells through the external tool [Dirty-Waters](https://github.com/chains-project/dirty-waters/).
+A flagged package is not necessarily abandoned. It should be interpreted as a risk indicator that may deserve manual inspection.
 
-## Important Notes
+The default threshold is 24 months.
+
+---
+
+## Dirty-Waters Integration: WSL/Ubuntu
+
+NPM Smell Analyzer supports a subset of smells through the external tool [Dirty-Waters](https://github.com/chains-project/dirty-waters/).
 
 Dirty-Waters-based smells are different from the local smells implemented directly in this project:
 
-- they are slower to execute;
-- they require a **GitHub repository** (`owner/repo`);
-- they require a **GitHub API token**;
-- in the tested environment, they were only validated successfully through **WSL/Ubuntu**.
+* they are slower to execute;
+* they require a GitHub repository identifier in the form `owner/repo`;
+* they require a GitHub API token;
+* in the tested Windows environment, they were validated through WSL/Ubuntu.
 
-Because of these requirements, Dirty-Waters-based smells are **not included in the default `--all` workflow** and should be executed explicitly.
+Because of these requirements, Dirty-Waters-based smells are not included in the default `--all` workflow and should be executed explicitly.
 
-> **Note:** Dirty-Waters-based smells are external, slower, GitHub-dependent, and WSL/Ubuntu-oriented in the tested environment. They must be executed explicitly and are not part of the default `--all` run.
+### Requirements
 
----
+To use Dirty-Waters-based smells in the tested Windows setup, the following requirements apply:
 
+* Windows with WSL installed;
+* an Ubuntu distribution inside WSL;
+* a local clone of Dirty-Waters inside Ubuntu;
+* a valid GitHub Personal Access Token;
+* a project hosted on GitHub.
 
-## Requirements
+### 1. Install WSL
 
-To use Dirty-Waters-based smells, you need:
-
-- Windows with **WSL** installed
-- An **Ubuntu** distribution inside WSL
-- A local clone of `dirty-waters` inside Ubuntu
-- A valid **GitHub Personal Access Token**
-- A project hosted on **GitHub**
-
----
-
-## 1. Install WSL
-
-Open **PowerShell as Administrator** and run:
+Open PowerShell as Administrator and run:
 
 ```powershell
 wsl --install -d Ubuntu
+```
 
 Restart the computer if requested.
 
 After restarting, open Ubuntu and complete the initial setup by creating:
 
-- a Linux username
-- a Linux password
+* a Linux username;
+* a Linux password.
 
-## 2. Prepara Ubuntu
+### 2. Prepare Ubuntu
 
 Inside Ubuntu, install the required tools:
 
-```ubuntu
+```bash
 sudo apt update
 sudo apt install -y python3 python3-venv python3-pip git nodejs npm curl
+```
 
-## 3. Create a GitHub token
+### 3. Create a GitHub token
 
 Create a fine-grained personal access token in GitHub with:
 
-- Resource owner: your GitHub account
-- Repository access: Only select repositories
-- select the repository you want to analyze
-- Repository permissions:
-- Metadata -> Read-only
-- Contents -> Read-only
+* resource owner: your GitHub account;
+* repository access: only selected repositories;
+* selected repository: the repository you want to analyze;
+* repository permissions:
+
+  * Metadata: read-only;
+  * Contents: read-only.
 
 This token is required by Dirty-Waters to access repository metadata.
 
-## 4. Configure the GitHub token
+### 4. Configure the GitHub token
 
-### In Windows (required when running npm-smell-analyzer from CMD/PowerShell)
+When running NPM Smell Analyzer from CMD or PowerShell, define the token in the same Windows terminal:
 
-In the same terminal where you run the analyzer:
-
-```bash
+```cmd
 set GITHUB_API_TOKEN=YOUR_TOKEN_HERE
+```
 
 To make it persistent for future terminals:
 
-```bash
+```cmd
 setx GITHUB_API_TOKEN "YOUR_TOKEN_HERE"
+```
 
-### In Ubuntu/WSL (recommended for standalone Dirty-Waters usage)
+For standalone Dirty-Waters usage inside Ubuntu/WSL:
 
-```ubuntu
+```bash
 export GITHUB_API_TOKEN='YOUR_TOKEN_HERE'
+```
 
-To make it persistent:
+To make it persistent inside Ubuntu:
 
-```ubuntu
+```bash
 echo 'export GITHUB_API_TOKEN="YOUR_TOKEN_HERE"' >> ~/.bashrc
 source ~/.bashrc
+```
 
-## 5. Clone and install Dirty-Waters inside Ubuntu
+### 5. Clone and install Dirty-Waters inside Ubuntu
 
 Inside Ubuntu:
 
-```ubuntu
+```bash
 cd ~
 git clone https://github.com/chains-project/dirty-waters.git
 cd dirty-waters
@@ -232,29 +309,33 @@ python3 -m venv venv
 source venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e .
+```
 
 At this point, Dirty-Waters should be available inside WSL.
 
-## 6. Standalone Dirty-Waters execution
+### 6. Validate standalone Dirty-Waters execution
 
 To validate that Dirty-Waters works correctly in Ubuntu:
 
-```ubuntu
+```bash
 cd ~/dirty-waters/tool
 python main.py -p OWNER/REPOSITORY -pm npm --gradual-report false --check-deprecated --debug
+```
 
 Example:
 
-```ubuntu
+```bash
 cd ~/dirty-waters/tool
 python main.py -p Parafita123/DSSMV_ProjectReact_1231283_1231051 -pm npm --gradual-report false --check-deprecated --debug
+```
 
 Another example for source-code repository checks:
 
-```ubuntu
+```bash
 python main.py -p Parafita123/DSSMV_ProjectReact_1231283_1231051 -pm npm --gradual-report false --check-source-code --debug
+```
 
-## 7. Running Dirty-Waters-based smells from npm-smell-analyzer
+### 7. Run Dirty-Waters-based smells from NPM Smell Analyzer
 
 Dirty-Waters-based smells must be executed explicitly.
 
@@ -262,59 +343,71 @@ Example:
 
 ```bash
 npm-smell-analyzer --project "C:\Users\fpara\Desktop\DSSMV_ProjectReact_1231283_1231051-master" --repo Parafita123/DSSMV_ProjectReact_1231283_1231051 --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/parafita/dirty-waters --smell deprecated-dependency
+```
 
 Another example:
 
 ```bash
 npm-smell-analyzer --project "C:\Users\fpara\Desktop\DSSMV_ProjectReact_1231283_1231051-master" --repo Parafita123/DSSMV_ProjectReact_1231283_1231051 --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/parafita/dirty-waters --smell no-source-code-link
+```
 
-## 8. Report location
+To run all Dirty-Waters-based smells:
+
+```bash
+npm-smell-analyzer --project "C:\Users\fpara\Desktop\DSSMV_ProjectReact_1231283_1231051-master" --repo Parafita123/DSSMV_ProjectReact_1231283_1231051 --dirty-waters-backend wsl --wsl-distro Ubuntu --dirty-waters-root /home/parafita/dirty-waters --dirty-waters-all
+```
+
+### 8. Dirty-Waters report location
 
 Dirty-Waters generates its own Markdown report inside the WSL environment.
 
 A typical output path is:
 
+```text
 /home/<your-user>/dirty-waters/tool/results/results_<timestamp>/<commit>_static_summary.md
+```
 
 Example:
 
+```text
 /home/parafita/dirty-waters/tool/results/results_2026-05-17-16-22-19/09802c669fb76b9c5209bd9a6cf797b68c5c6657_static_summary.md
+```
 
-This Markdown report is the primary output of Dirty-Waters and should be considered the source of truth for Dirty-Waters-based checks.
+This Markdown report is the primary Dirty-Waters output and should be considered the source of truth for Dirty-Waters-based checks.
 
-## 9. Current limitations
+### 9. Dirty-Waters limitations
 
 Dirty-Waters integration has the following limitations:
 
-- it requires a GitHub repository and cannot analyze a purely local project without repository metadata;
-- it is significantly slower than the local smells and Knip-based smells;
-- in the tested setup, it was only validated successfully through WSL/Ubuntu;
-- Dirty-Waters-based smells are therefore executed separately and are not part of the default fast analysis flow.
+* it requires a GitHub repository and cannot analyze a purely local project without repository metadata;
+* it is significantly slower than the local and Knip-based smells;
+* in the tested setup, it was validated through WSL/Ubuntu;
+* Dirty-Waters-based smells are executed separately and are not part of the default fast analysis flow.
 
-For this reason, the recommended workflow is:
+Recommended workflow:
 
-use npm-smell-analyzer normally for local/fast smells;
-use Dirty-Waters-based smells only when repository-level supply-chain analysis is needed.
+1. use NPM Smell Analyzer normally for local and Knip-based smells;
+2. use Dirty-Waters-based smells only when repository-level supply chain analysis is needed.
 
-
+---
 
 ## Configuration Files
 
-The analyzer can optionally read its execution settings from a JSON configuration file.
+The analyzer can optionally read execution settings from a JSON configuration file.
 
 Two usage modes are supported:
 
-- a configuration file placed in the root of the analyzed project;
-- an explicit configuration file passed through `--config`.
+* a configuration file placed in the root of the analyzed project;
+* an explicit configuration file passed through `--config`.
 
 The configuration file is optional. If no configuration file is found, the tool behaves normally and expects the required options through the command line.
 
 Supported default filenames in the analyzed project root:
 
-- `smellrc.json`
-- `.smellrc.json`
+* `smellrc.json`
+* `.smellrc.json`
 
-### Example: local and Knip smells
+### Example: local and Knip-based smells
 
 Example configuration file:
 
@@ -323,11 +416,11 @@ Example configuration file:
   "smells": ["all"],
   "unmaintained_threshold_months": 24
 }
+```
 
 This configuration runs the default local and Knip-based smells.
 
-
-## Dirty-Waters config example
+### Example: Dirty-Waters-based smells
 
 Example configuration file:
 
@@ -339,9 +432,9 @@ Example configuration file:
   "wsl_distro": "Ubuntu",
   "dirty_waters_root": "/home/your-user/dirty-waters"
 }
+```
 
 This configuration runs all Dirty-Waters-based smells without requiring the same options to be repeated in every command.
-
 
 ### Command-line override
 
@@ -353,12 +446,76 @@ For example, if the configuration file contains:
 {
   "smells": ["all"]
 }
+```
 
-the following command will override that setting and run only one smell:
+the following command overrides that setting and runs only one smell:
 
 ```bash
 npm-smell-analyzer --project "C:\path\to\project" --config "C:\path\to\config.json" --smell duplicate-versions
+```
 
-Note:
-If `--config` points to a non-existing file, the tool will fail explicitly with an error indicating that the configuration file could not be found.
+If `--config` points to a non-existing file, the tool fails explicitly with an error indicating that the configuration file could not be found.
+
+---
+
+## Testing and Validation
+
+The prototype includes automated tests covering native detectors, integration scenarios, and external-tool adapter behavior.
+
+Run the full test suite with:
+
+```bash
+python -m pytest
+```
+
+The validation strategy includes:
+
+* unit tests for native detectors;
+* integration tests over prepared npm projects;
+* mock-based tests for Knip and Dirty-Waters adapters.
+
+---
+
+## Repository Structure
+
+A simplified view of the repository structure is:
+
+```text
+src/
+  analyzers/
+  external_tools/
+  smells/
+  cli.py
+  config.py
+  models.py
+  orchestrator.py
+  report_writer.py
+
+tests/
+  unit/
+  integration/
+  mocks/
+
+test_projects/
+config_examples/
+```
+
+---
+
+## Current Limitations
+
+The current prototype has the following limitations:
+
+* it focuses on npm projects;
+* Dirty-Waters-based checks require external setup and GitHub metadata;
+* some smells depend on installed `node_modules`;
+* `unmaintained-package` is based on a heuristic threshold;
+* the current reports are text/JSON-based;
+* the tool reports indicators and warning signs, not confirmed vulnerabilities or attacks.
+
+---
+
+## License
+
+This project is available under the license included in the repository.
 

@@ -15,3 +15,5 @@ dirty_waters_debug/dirty_waters_stderr.txt
 build/
 dist/
 react_smell_analyzer.egg-info/PKG-INFO
+radon_cc.txt
+radon_mi.txt
